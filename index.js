@@ -22,20 +22,29 @@ function selected(editor) {
   var buffer = editor.getBuffer()
   var fpn    = editor.getPath()
   var src    = buffer.getText()
-  var ast    = babylon.parse(src, {
-      allowImportExportEverywhere: true,
-      allowReturnOutsideFunction: true,
-      allowHashBang: true,
-      ecmaVersion: 6,
-      strictMode: false,
-      sourceType: 'module',
-      locations: true,
-      features: {},
-      plugins: {
-          jsx: true,
-          flow: true
-      }
-  })
+  var ast    = null
+  var opts   = {
+    allowImportExportEverywhere: true,
+    allowReturnOutsideFunction: true,
+    allowHashBang: true,
+    ecmaVersion: 6,
+    strictMode: false,
+    sourceType: 'module',
+    locations: true,
+    features: {},
+    plugins: {
+      jsx: true,
+      flow: true
+    }
+  }
+
+  try {
+    ast    = babylon.parse(src, opts)
+  } catch (ex) {
+    src    = editor.getSelectedText()
+    ast    = babylon.parse(src, opts)
+    ranges = null
+  }
 
   var packages = []
   var lookup   = position(src)
@@ -52,7 +61,7 @@ function selected(editor) {
 
     var dst = node.evalled = node.evalled || seval(node.arguments[0], env)
     if (!dst) return
-    if (!included(lookup, node, ranges)) return
+    if (ranges && !included(lookup, node, ranges)) return
 
     packages.push(dst)
   })
@@ -61,7 +70,7 @@ function selected(editor) {
     if (node.type !== 'ImportDeclaration') return
     var source = node.source
     if (source.type !== 'Literal') return
-    if (!included(lookup, node, ranges)) return
+    if (ranges && !included(lookup, node, ranges)) return
     packages.push(source.value)
   })
 
